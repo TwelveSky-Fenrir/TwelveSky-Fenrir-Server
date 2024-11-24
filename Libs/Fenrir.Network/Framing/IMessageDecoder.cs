@@ -5,7 +5,6 @@ namespace Fenrir.Network.Framing;
 /// <summary>Describes a way to decode a network messages.</summary>
 /// <typeparam name="TMessage">The type of the message.</typeparam>
 public interface IMessageDecoder<out TMessage>
-    where TMessage : struct
 {
 	/// <summary>Decodes all message from the given <paramref name="sequence" />.</summary>
 	/// <param name="sequence">The sequence buffer.</param>

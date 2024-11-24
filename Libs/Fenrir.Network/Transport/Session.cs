@@ -11,34 +11,36 @@ using Microsoft.Extensions.Logging;
 
 namespace Fenrir.Network.Transport;
 
+
 /// <summary>A network session that represents a connection to a remote endpoint.</summary>
 /// <typeparam name="TMessage">The type of the message.</typeparam>
-public abstract class FenrirSession<TMessage> : IAsyncDisposable
-    where TMessage : struct
+/// <typeparam name="TSessionData"></typeparam>
+/// <typeparam name="TPacketType"></typeparam>
+public abstract class Session<TPacketType, TSessionData, TMessage> : ISession<TPacketType, TSessionData, TMessage>
 {
     private readonly CancellationTokenSource _cts;
     private readonly ILogger _logger;
     private readonly IMessageDecoder<TMessage> _messageDecoder;
-    private readonly IMessageDispatcher<TMessage> _messageDispatcher;
-    private readonly FenrirServerOptions _options;
-    private readonly Socket _socket;
-    
-    protected readonly IDuplexPipe _pipe;
+    private readonly IMessageDispatcher<TPacketType, TSessionData, TMessage> _messageDispatcher;
     protected readonly IMessageEncoder<TMessage> _messageEncoder;
+    private readonly FenrirServerOptions _options;
+
+    protected readonly IDuplexPipe _pipe;
+    private readonly Socket _socket;
 
     private bool _disposed;
     private string? _sessionId;
 
-    /// <summary>Initializes a new instance of the <see cref="FenrirSession{TMessage}" /> class.</summary>
+    /// <summary>Initializes a new instance of the <see cref="Session{TSessionData,TMessage}" /> class.</summary>
     /// <param name="socket">The bound socket.</param>
     /// <param name="messageParser">The message parser.</param>
     /// <param name="messageDispatcher">The message dispatcher.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="options">The server options.</param>
-    protected FenrirSession(
+    protected Session(
         Socket socket,
         IMessageParser<TMessage> messageParser,
-        IMessageDispatcher<TMessage> messageDispatcher,
+        IMessageDispatcher<TPacketType, TSessionData, TMessage> messageDispatcher,
         ILogger logger,
         FenrirServerOptions options)
     {
@@ -51,6 +53,8 @@ public abstract class FenrirSession<TMessage> : IAsyncDisposable
         _logger = logger;
         _options = options;
     }
+
+    public TSessionData Data { get; }
 
     /// <summary>Gets the unique identifier of the underlying session.</summary>
     public string SessionId => _sessionId ??= UuidGenerator.NewGuid();
@@ -93,7 +97,7 @@ public abstract class FenrirSession<TMessage> : IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
-    internal async Task ReceiveAsync()
+    public async Task ReceiveAsync()
     {
         try
         {
@@ -149,10 +153,10 @@ public abstract class FenrirSession<TMessage> : IAsyncDisposable
 
     /// <summary>Asynchronously sends a message to the remote endpoint.</summary>
     /// <param name="message">The message to send.</param>
-    protected ValueTask SendAsync(TMessage message)
+    public ValueTask SendAsync(TMessage message)
     {
         if (_disposed)
-            throw new ObjectDisposedException(nameof(FenrirSession<TMessage>));
+            throw new ObjectDisposedException(nameof(Session<TPacketType, TSessionData, TMessage>));
 
         if (_cts.IsCancellationRequested)
             return ValueTask.CompletedTask;
@@ -175,7 +179,7 @@ public abstract class FenrirSession<TMessage> : IAsyncDisposable
 
     /// <summary>Disconnect the session from the remote endpoint.</summary>
     /// <param name="delay">The delay before the session is disconnected.</param>
-    private void Disconnect(TimeSpan? delay = null)
+    public void Disconnect(TimeSpan? delay = null)
     {
         if (_cts.IsCancellationRequested)
             return;

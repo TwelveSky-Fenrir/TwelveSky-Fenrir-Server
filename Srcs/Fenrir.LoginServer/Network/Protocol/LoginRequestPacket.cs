@@ -2,11 +2,13 @@
 
 namespace Fenrir.LoginServer.Network.Protocol;
 
-public class LoginMessage : Message
+public class LoginRequestPacket : Packet
 {
     // TODO: Implement PacketType enum
-    public override PacketType PacketType { get; }
-    
+
+    private new static readonly PacketType Type = PacketType.LoginRequest;
+    public override PacketType PacketType => Type;
+
     public string Username { get; set; }
     public string Password { get; set; }
 
