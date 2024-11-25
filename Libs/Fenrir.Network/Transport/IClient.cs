@@ -10,4 +10,5 @@ public interface IClient : IAsyncDisposable
 
     uint RecvBufferPosition { get; set; }
     ISession? Session { get; set; }
+    Task ReceiveAsync();
 }

@@ -1,4 +1,5 @@
 ﻿using System.IO.Pipelines;
+using System.Net;
 using System.Net.Sockets;
 using Fenrir.LoginServer.Network.Metadata;
 using Fenrir.Network.Dispatcher;
@@ -10,15 +11,16 @@ using Microsoft.Extensions.Logging;
 namespace Fenrir.LoginServer;
 
 public sealed class LoginSession(
-    Socket socket,
-    IMessageParser<Packet> messageParser,
-    IMessageDispatcher<PacketType, MessageMetadata, Packet> messageDispatcher,
+    IPEndPoint remoteEndPoint,
+    //IMessageParser<Packet> messageParser,
+    //IMessageDispatcher<PacketType, MessageMetadata, Packet> messageDispatcher,
     ILogger logger,
     FenrirServerOptions options)
-    : Session<PacketType, MessageMetadata, Packet>(socket, messageParser, messageDispatcher, logger, options)
+    : Session(logger, options, "", remoteEndPoint) // TODO: Fix this.
 {
+    
     // TODO: Composition? Traits? (hasXorEncryption?)
-    private const byte XorKey = 0x00;
+    private const byte XorKey = 0x00; // TODO: Move somewhere else?
     public new int SessionId { get; set; }
 
     // public ValueTask SendAsync<TMessage>()

@@ -1,4 +1,5 @@
-﻿using Fenrir.LoginServer;
+﻿using System.Runtime.InteropServices;
+using Fenrir.LoginServer;
 using Fenrir.LoginServer.Handlers;
 using Fenrir.LoginServer.Network.Dispatcher;
 using Fenrir.LoginServer.Network.Framing;
@@ -6,6 +7,7 @@ using Fenrir.LoginServer.Network.Metadata;
 using Fenrir.Network.Collections;
 using Fenrir.Network.Dispatcher;
 using Fenrir.Network.Framing;
+using Fenrir.Network.Helpers;
 using Fenrir.Network.Options;
 using Fenrir.Network.Transport;
 using Microsoft.Extensions.Configuration;
@@ -20,15 +22,25 @@ var configuration = new ConfigurationBuilder()
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
-        services.AddSingleton<ISessionCollection<Session<PacketType, MessageMetadata, Packet>>, SessionCollection<MessageMetadata, Packet>>();
-        
-        services.AddSingleton(provider =>
-        {
-            var dispatcher = new MessageDispatcher();
-            var loginHandler = provider.GetRequiredService<LoginHandler>();
-        
-            dispatcher.RegisterHandler(PacketType.LoginRequest, loginHandler.HandleLoginAsync);
-            return dispatcher;
+        services.AddSingleton<ILoggerFactory, LoggerFactory>();
+
+        // // services.AddSingleton<ISessionCollection<Session<PacketType, MessageMetadata, Packet>>, SessionCollection<MessageMetadata, Packet>>();
+        // //
+        // services.AddSingleton(_ => {
+        //     var dispatcher = new MessageDispatcher();
+        //     
+        //     // PacketRegistration.RegisterPackets<PacketType, Packet>(dispatcher, "Fenrir.LoginServer.Handlers", "Fenrir.LoginServer.Packets");
+        //     
+        //     //var loginHandler = provider.GetRequiredService<LoginHandler>();
+        //     // dispatcher.RegisterHandler(PacketType.LoginRequest, loginHandler.HandleLoginAsync);
+        //     return dispatcher;
+        // });
+
+        services.AddSingleton(_ => {
+            var packetCollection = new PacketCollection();
+            PacketRegistration.RegisterPacketsToCollection(packetCollection, "Fenrir.LoginServer.Packets");
+            PacketRegistration.RegisterPacketsToCollection(packetCollection, "Fenrir.LoginServer.Handlers");
+            return packetCollection;
         });
         
         
@@ -45,25 +57,50 @@ var host = Host.CreateDefaultBuilder(args)
         // });
 
 
-        services.AddSingleton<IMessageParser<MessageMetadata>, MessageParser>();
-        services.AddSingleton<ILoggerFactory, LoggerFactory>();
-
-        services.Configure<FenrirServerOptions>(options =>
-        {
-            options.IpAddress = "127.0.0.1";
-            options.Port = 11091;
-            options.MaxConnections = 100;
-            options.EnableKeepAlive = true;
-            options.KeepAliveInterval = 10;
-            options.EnableLogging = true;
-            options.MaxConnectionsByIpAddress = 10;
-            // TODO: Nagle?
-        });
-
-        services.AddSingleton<LoginServer>();
+        // services.AddSingleton<IMessageParser<MessageMetadata>, MessageParser>();
+        //
+        // services.Configure<FenrirServerOptions>(options =>
+        // {
+        //     options.IpAddress = "127.0.0.1";
+        //     options.Port = 11091;
+        //     options.MaxConnections = 100;
+        //     options.EnableKeepAlive = true;
+        //     options.KeepAliveInterval = 10;
+        //     options.EnableLogging = true;
+        //     options.MaxConnectionsByIpAddress = 10;
+        //     // TODO: Nagle?
+        // });
+        //
+        // services.AddSingleton<LoginServer>();
     })
     .Build();
 
-var loginServer = host.Services.GetRequiredService<LoginServer>();
+// Get logger factory
+var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+var logger = loggerFactory.CreateLogger("LoginServer");
 
-await loginServer.StartAsync();
+logger.LogInformation("Starting Login Server");
+
+// TODO: Add test that checks size of all packets recv and send.
+// int size = Marshal.SizeOf<LoginHandler.LoginPacketData>();
+// Console.WriteLine($"Size of LoginPacketData: {size} bytes");
+var packetCollection = host.Services.GetRequiredService<PacketCollection>();
+packetCollection.ForEach(packetInfo =>
+{
+    var size = Marshal.SizeOf(packetInfo.PacketType);
+    
+    // If Packet Id is in PacketType
+    if (!Enum.IsDefined(typeof(PacketType), packetInfo.Id))
+    {
+        logger.LogWarning($"Packet Id {packetInfo.Id} is not defined in PacketType enum");
+        return;
+    }
+    PacketType packetType = (PacketType) packetInfo.Id;
+    
+    logger.LogInformation($"{packetType.GetType().Name} {packetType} {packetInfo.Name}: {size} bytes");
+});
+
+// var loginServer = host.Services.GetRequiredService<LoginServer>();
+//
+// await loginServer.StartAsync();
+

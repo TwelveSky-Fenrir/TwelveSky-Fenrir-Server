@@ -31,6 +31,10 @@ public class ClientBase : IClient
 
     // private string? _sessionId;
     public ISession? Session { get; set; }
+    public Task ReceiveAsync()
+    {
+        throw new NotImplementedException();
+    }
 
     public async ValueTask DisposeAsync()
     {

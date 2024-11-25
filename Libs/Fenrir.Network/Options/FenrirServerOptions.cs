@@ -5,6 +5,9 @@ namespace Fenrir.Network.Options;
 /// <summary>Represents a configuration for the transport layer.</summary>
 public class FenrirServerOptions
 {
+    // TODO: Rename this to bind address?
+    // TODO: What about Nat Translation?
+    
     /// <summary>Gets the ip address.</summary>
     public required string IpAddress { get; set; }
 
