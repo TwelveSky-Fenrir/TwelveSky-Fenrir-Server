@@ -14,11 +14,14 @@ public class Marshaling
 
         MemoryMarshal.Write(destination, ref value);
     }
-
-    public struct Cake
+    
+    public static void SerializeStructToMemory<T>(T value, Memory<byte> destination) where T : struct
     {
-        public int A;
-        
+        // TODO: Do I need this check here, its done inside Write as well?
+        if (destination.Length < Marshal.SizeOf<T>())
+            throw new ArgumentException("Destination is too small.");
+
+        MemoryMarshal.Write(destination.Span, in value);
     }
 
     public static T DeserializeStructFromSpan<T>(ReadOnlySpan<byte> source) where T : struct
@@ -33,9 +36,16 @@ public class Marshaling
         //     
         // }
         
-        
-        
         return MemoryMarshal.Read<T>(source);
+    }
+    
+    public static T DeserializeStructFromSpan<T>(ReadOnlyMemory<byte> source) where T : struct
+    {
+        // TODO: Do I need this check here, its done inside Read as well?
+        if (source.Length < Marshal.SizeOf<T>())
+            throw new ArgumentException("Source span is too small.");
+
+        return MemoryMarshal.Read<T>(source.Span);
     }
 
     // TODO: A way to get the struct usign a reference/span/memory?

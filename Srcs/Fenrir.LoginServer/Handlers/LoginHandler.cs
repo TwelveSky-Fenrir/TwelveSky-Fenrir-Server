@@ -81,27 +81,153 @@ public class LoginHandler(ILogger<LoginHandler> logger)
     //         throw new NotImplementedException();
     //     }
     // }
-    
-    
+    //
+    // [Packet(PacketType.LoginRequest)]
+    // [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    // public unsafe struct LoginRequestPacket : IPacket
+    // {
+    //     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 13)]
+    //     public fixed byte name[13];
+    //
+    //     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 13)]
+    //     public fixed byte password[13];
+    //
+    //     public void SetUsername(string value)
+    //     {
+    //         if (value.Length > 12)
+    //             throw new ArgumentException("Username cannot be longer than 12 characters.");
+    //
+    //         name ??= new byte[13];
+    //         var bytes = Encoding.ASCII.GetBytes(value);
+    //         Array.Clear(name, 0, 13);
+    //         Array.Copy(bytes, name, bytes.Length);
+    //     }
+    //
+    //     public void SetPassword(string value)
+    //     {
+    //         if (value.Length > 12)
+    //             throw new ArgumentException("Password cannot be longer than 12 characters.");
+    //
+    //         password ??= new byte[13];
+    //         var bytes = Encoding.ASCII.GetBytes(value);
+    //         Array.Clear(password, 0, 13);
+    //         Array.Copy(bytes, password, bytes.Length);
+    //     }
+    //
+    //     public string GetUsername()
+    //     {
+    //         return Encoding.ASCII.GetString(name).TrimEnd('\0');
+    //     }
+    //
+    //     public string GetPassword()
+    //     {
+    //         return Encoding.ASCII.GetString(password).TrimEnd('\0');
+    //     }
+    // }
     
     [Packet(PacketType.LoginRequest)]
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct LoginRequestPacket : IPacket
+    public unsafe struct LoginRequestPacket : IPacket
     {
-        // Note; Try StringBuilder?
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 13)]
-        public byte[] name;
+        private fixed byte name[13];
+        private fixed byte password[13];
 
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 13)]
-        public byte[] password;
-  
-        // TODO: A better way to read/write these strings.
-        // Unfortunately in C# char is not good here because it is UTF-16.
-        // Game pretty much always uses ASCII but maps its self as needed into some other charset in specific language clients.
-        // Although most I've seen have been custom sets and they generally have overlap with ASCII.
-        public string Username => Encoding.ASCII.GetString(name).TrimEnd('\0');
-        public string Password => Encoding.ASCII.GetString(password).TrimEnd('\0');
+        public void SetUsername(string value)
+        {
+            if (value.Length > 12)
+                throw new ArgumentException("Username cannot be longer than 12 characters.");
+
+            fixed (byte* namePtr = name)
+            {
+                var bytes = Encoding.ASCII.GetBytes(value);
+                for (int i = 0; i < 13; i++)
+                {
+                    namePtr[i] = i < bytes.Length ? bytes[i] : (byte)0;
+                }
+            }
+        }
+
+        public void SetPassword(string value)
+        {
+            if (value.Length > 12)
+                throw new ArgumentException("Password cannot be longer than 12 characters.");
+
+            fixed (byte* passwordPtr = password)
+            {
+                var bytes = Encoding.ASCII.GetBytes(value);
+                for (int i = 0; i < 13; i++)
+                {
+                    passwordPtr[i] = i < bytes.Length ? bytes[i] : (byte)0;
+                }
+            }
+        }
+
+        public string GetUsername()
+        {
+            fixed (byte* namePtr = name)
+            {
+                return Encoding.ASCII.GetString(namePtr, 13).TrimEnd('\0');
+            }
+        }
+
+        public string GetPassword()
+        {
+            fixed (byte* passwordPtr = password)
+            {
+                return Encoding.ASCII.GetString(passwordPtr, 13).TrimEnd('\0');
+            }
+        }
     }
+
+    
+    
+    //
+    // [Packet(PacketType.LoginRequest)]
+    // [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    // public struct LoginRequestPacket : IPacket
+    // {
+    //     // Note; Try StringBuilder?
+    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 13)]
+    //     public byte[] name;
+    //
+    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 13)]
+    //     public byte[] password;
+    //
+    //     // TODO: A better way to read/write these strings.
+    //     // Unfortunately in C# char is not good here because it is UTF-16.
+    //     // Game pretty much always uses ASCII but maps its self as needed into some other charset in specific language clients.
+    //     // Although most I've seen have been custom sets and they generally have overlap with ASCII.
+    //     
+    //     public string Username
+    //     {
+    //         get => Encoding.ASCII.GetString(name).TrimEnd('\0');
+    //         set
+    //         {
+    //             if (value.Length > 12)
+    //                 throw new ArgumentException("Username cannot be longer than 12 characters.");
+    //
+    //             name ??= new byte[13];
+    //             var bytes = Encoding.ASCII.GetBytes(value);
+    //             Array.Clear(name, 0, name.Length);
+    //             Array.Copy(bytes, name, bytes.Length);
+    //         }
+    //     }
+    //
+    //     public string Password
+    //     {
+    //         get => Encoding.ASCII.GetString(password).TrimEnd('\0');
+    //         set
+    //         {
+    //             if (value.Length > 12)
+    //                 throw new ArgumentException("Password cannot be longer than 12 characters.");
+    //
+    //             password ??= new byte[13];
+    //             var bytes = Encoding.ASCII.GetBytes(value);
+    //             Array.Clear(password, 0, password.Length);
+    //             Array.Copy(bytes, password, bytes.Length);
+    //         }
+    //     }
+    // }
 
     // public class LoginPacket : Packet
     // {
@@ -132,7 +258,7 @@ public class LoginHandler(ILogger<LoginHandler> logger)
     public ValueTask HandleLoginAsync(Session session, LoginRequestPacket packet)
     {
         // TODO: Validation? Throw if bad content?
-        _logger.LogInformation("Handling login request for {Username}", packet.Username);
+        _logger.LogInformation("Handling login request for {Username}", packet.GetUsername());
         return ValueTask.CompletedTask;
     }
 }

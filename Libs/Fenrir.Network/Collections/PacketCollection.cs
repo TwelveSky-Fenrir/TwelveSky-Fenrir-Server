@@ -19,7 +19,7 @@ public class PacketInfo
     {
         Id = id;
         PacketType = null;
-        Name = id.ToString("X2");
+        Name = id.ToString("X");
         Size = 0;
         IsCompressible = false;
     }
@@ -69,7 +69,7 @@ public class PacketInfo
         }
         else
         {
-            Name = id.ToString("X2");
+            Name = id.ToString("X");
             Size = 0;
         }
 

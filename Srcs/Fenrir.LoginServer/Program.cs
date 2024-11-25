@@ -10,6 +10,7 @@ using Fenrir.Network.Framing;
 using Fenrir.Network.Helpers;
 using Fenrir.Network.Options;
 using Fenrir.Network.Transport;
+using Fenrir.Network.Util;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -92,13 +93,68 @@ packetCollection.ForEach(packetInfo =>
     // If Packet Id is in PacketType
     if (!Enum.IsDefined(typeof(PacketType), packetInfo.Id))
     {
-        logger.LogWarning($"Packet Id {packetInfo.Id} is not defined in PacketType enum");
+        logger.LogWarning($"Packet Id {packetInfo.Id:X} is not defined in PacketType enum");
         return;
     }
     PacketType packetType = (PacketType) packetInfo.Id;
     
-    logger.LogInformation($"{packetType.GetType().Name} {packetType} {packetInfo.Name}: {size} bytes");
+    logger.LogInformation($"{packetType.GetType().Name} {packetType:X} {packetType} {packetInfo.Name}: {size} bytes");
 });
+
+
+
+    // var deserializer = (Func<ReadOnlyMemory<byte>, object>)Delegate.CreateDelegate(typeof(Func<ReadOnlyMemory<byte>, object>), genericMethod);
+    // var deserializer = (Func<ReadOnlySpan<byte>, object>)Delegate.CreateDelegate(typeof(Func<ReadOnlySpan<byte>, object>), genericMethod);
+
+byte[] buffer = new byte[30];
+Span<byte> span = buffer;
+Memory<byte> memory = buffer;
+
+LoginHandler.LoginRequestPacket loginRequestPacket = new();
+loginRequestPacket.SetUsername("Liam");
+loginRequestPacket.SetPassword("Secret");
+
+
+// Write struct to buffer.
+Marshaling.SerializeStructToMemory(loginRequestPacket, memory);
+
+// Hex dump buffer to log.
+logger.LogInformation(Utils.HexDump(buffer));
+
+
+// private static Func<ReadOnlyMemory<byte>, object> GetDeserializer(Type type)
+// {
+// if (!_deserializers.TryGetValue(type, out var deserializer))
+// {
+
+Type type = typeof(LoginHandler.LoginRequestPacket);
+
+//var method = typeof(Marshaling).GetMethod(nameof(Marshaling.DeserializeStructFromSpan), [typeof(ReadOnlyMemory<byte>)]); // , [type]
+//var genericMethod = method.MakeGenericMethod(type);
+
+//var deserializer = (Func<ReadOnlyMemory<byte>, object>)Delegate.CreateDelegate(typeof(Func<ReadOnlyMemory<byte>, object>), genericMethod);
+
+
+var method = typeof(Marshaling).GetMethod(nameof(Marshaling.DeserializeStructFromSpan), new[] { typeof(ReadOnlyMemory<byte>) });
+var genericMethod = method.MakeGenericMethod(type);
+//var deserializer = (Func<ReadOnlyMemory<byte>, object>)Delegate.CreateDelegate(typeof(Func<ReadOnlyMemory<byte>, object>), genericMethod);
+
+// Please invoke the method.
+ReadOnlyMemory<byte> readOnlyMemory = memory;
+
+var oops = genericMethod.Invoke(null, new object[] { readOnlyMemory });
+LoginHandler.LoginRequestPacket loginRequestPacket2 = (LoginHandler.LoginRequestPacket)oops;
+logger.LogInformation($"Username: {loginRequestPacket2.GetUsername()} Password: {loginRequestPacket2.GetPassword()}");
+
+//var obj = deserializer();
+
+
+
+
+    //     _deserializers[type] = deserializer;
+    // }
+//     return deserializer;
+// }
 
 // var loginServer = host.Services.GetRequiredService<LoginServer>();
 //
