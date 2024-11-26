@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Buffers;
+using System.Runtime.InteropServices;
 
 namespace Fenrir.Network.Framing;
 
@@ -37,6 +38,30 @@ public class Marshaling
         // }
         
         return MemoryMarshal.Read<T>(source);
+    }
+    
+    public static T DeserializeStructFromReadOnlySequence<T>(ReadOnlySequence<byte> sequence) where T : struct
+    {
+        var requiredSize = Marshal.SizeOf<T>();
+        // TODO: Do I need this check here, its done inside Read as well?
+        if (sequence.Length < requiredSize)
+            throw new ArgumentException("Source sequence is too small.");
+        
+        // If we have enough space in our first span we can read directly from it.
+        // A sequence can be made up of multiple spans.
+        // It is unlikely (if our length is large enough) that a structure would be larger than 1 span.
+        if (sequence.IsSingleSegment)
+        //if (sequence.FirstSpan.Length >= requiredSize) // TODO: Do we need a size check?
+            return MemoryMarshal.Read<T>(sequence.FirstSpan);
+        
+        // If we do not have enough space in our first span, then we must copy the data.
+        // This is because MemoryMarshal.Read requires a span and for it to be contagious.
+        
+        var copy = new byte[requiredSize];
+        //sequence.CopyTo(copy);
+        sequence.Slice(0, requiredSize).CopyTo(copy);
+
+        return MemoryMarshal.Read<T>(copy);
     }
     
     public static T DeserializeStructFromSpan<T>(ReadOnlyMemory<byte> source) where T : struct

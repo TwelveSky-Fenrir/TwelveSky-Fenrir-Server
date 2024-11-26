@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Buffers;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Fenrir.Network.Util;
 
@@ -6,6 +8,43 @@ namespace Fenrir.Network.Util;
 
 public static partial class Utils
 {
+    public static bool IsMarshalable(Type type)
+    {
+        return type.IsValueType && type.StructLayoutAttribute != null && Marshal.SizeOf(type) > 0;
+    }
+    
+    private static string HexDump(SequenceReader<byte> sequence, int bytesPerLine = 16)
+    {
+        return HexDump(sequence.UnreadSpan.ToArray(), bytesPerLine);
+    }
+    
+    public static string HexDump(ReadOnlySequence<byte> sequence, int bytesPerLine = 16)
+    {
+        return HexDump(sequence.Slice(sequence.Start, sequence.Length).ToArray(), bytesPerLine);
+    }
+    
+    public static string HexDump(Memory<byte> memory, int bytesPerLine = 16)
+    {
+        return HexDump(memory.Span.ToArray(), bytesPerLine);
+    }
+    
+    public static string HexDump(object obj, int bytesPerLine = 16)
+    {
+        // If object can be marsheled to a byte array, then we can dump it.
+        if (IsMarshalable(obj.GetType()))
+        {
+            var size = Marshal.SizeOf(obj);
+            var bytes = new byte[size];
+            var ptr = Marshal.AllocHGlobal(size);
+            Marshal.StructureToPtr(obj, ptr, true);
+            Marshal.Copy(ptr, bytes, 0, size);
+            Marshal.FreeHGlobal(ptr);
+            return HexDump(bytes, bytesPerLine);
+        }
+        
+        return "Unable to HexDump <not marshallable>";
+    }
+    
     public static string HexDump(byte[] bytes, int bytesPerLine = 16)
     {
         if (bytes == null) return "<null>";
