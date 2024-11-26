@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.JavaScript;
 using System.Text;
 using Fenrir.LoginServer;
 using Fenrir.LoginServer.Handlers;
@@ -212,8 +213,8 @@ public class WubaSequenceReader
                     Marshaling.DeserializeStructFromReadOnlySequence<LoginHandler.LoginRequestPacket>(
                         reader.UnreadSequence);
                 //reader.Advance(Marshal.SizeOf<LoginHandler.LoginRequestPacket>());
-                Console.WriteLine($"LoginRequestPacket: {loginRequestPacket.GetUsername()}");
-                Console.WriteLine($"LoginRequestPacket Dump: {Utils.HexDump(loginRequestPacket)}");
+                Console.WriteLine($"LoginRequestPacket:\n{loginRequestPacket.GetUsername()}");
+                Console.WriteLine($"LoginRequestPacket Dump:\n{Utils.HexDump(loginRequestPacket)}");
             }
         
 

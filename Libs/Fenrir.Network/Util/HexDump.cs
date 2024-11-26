@@ -31,18 +31,16 @@ public static partial class Utils
     public static string HexDump(object obj, int bytesPerLine = 16)
     {
         // If object can be marsheled to a byte array, then we can dump it.
-        if (IsMarshalable(obj.GetType()))
-        {
-            var size = Marshal.SizeOf(obj);
-            var bytes = new byte[size];
-            var ptr = Marshal.AllocHGlobal(size);
-            Marshal.StructureToPtr(obj, ptr, true);
-            Marshal.Copy(ptr, bytes, 0, size);
-            Marshal.FreeHGlobal(ptr);
-            return HexDump(bytes, bytesPerLine);
-        }
-        
-        return "Unable to HexDump <not marshallable>";
+         if (!IsMarshalable(obj.GetType())) return "Unable to HexDump <not marshallable>";
+
+        var size = Marshal.SizeOf(obj);
+        var bytes = new byte[size];
+        var ptr = Marshal.AllocHGlobal(size);
+        Marshal.StructureToPtr(obj, ptr, true);
+        Marshal.Copy(ptr, bytes, 0, size);
+        Marshal.FreeHGlobal(ptr);
+
+        return HexDump(bytes, bytesPerLine);
     }
     
     public static string HexDump(byte[] bytes, int bytesPerLine = 16)
